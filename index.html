@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Hue</title>
+    <script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+    <style>
+        table {
+            width: 100%;
+        }
+        td, th {
+            border: solid 1px black;
+            text-align: center;
+            padding: 5px;
+        }
+        input[type=range] {
+            width: 100%;
+            margin: 0;
+        }
+
+        .hue-gradient {
+            height: 10px;
+            width: 100%;
+            background: linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+        }
+    </style>
+</head>
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th data-url="groups/2/action">alle</th>
+                <th data-url="groups/1/action">counter - beide</th>
+                <th data-url="lights/1/state">counter - voor</th>
+                <th data-url="lights/2/state">counter - achter</th>
+                <th data-url="lights/3/state">staande lamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-field='on' class="switch">
+                <th>switch</th>
+                <td><input type="checkbox"/></td>
+                <td><input type="checkbox"/></td>
+                <td><input type="checkbox"/></td>
+                <td><input type="checkbox"/></td>
+                <td><input type="checkbox"/></td>
+            </tr>
+            <tr data-field="hue" class="hue">
+                <th>Hue</th>
+                <td><input type="range" min="0" max="65535" value="" /><div class="hue-gradient"></div></td>
+                <td><input type="range" min="0" max="65535" value="" /><div class="hue-gradient"></div></td>
+                <td><input type="range" min="0" max="65535" value="" /><div class="hue-gradient"></div></td>
+                <td><input type="range" min="0" max="65535" value="" /><div class="hue-gradient"></div></td>
+                <td><input type="range" min="0" max="65535" value="" /><div class="hue-gradient"></div></td>
+            </tr>
+            <tr data-field="sat" class="sat">
+                <th>Saturation</th>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+            </tr>
+            <tr data-field="bri" class="bri">
+                <th>Brightness</th>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+                <td><input type="range" min="0" max="255" value="" /></td>
+            </tr>
+            <tr data-field="alert" class="alert">
+                <th>Alert</th>
+                <td><select>
+                    <option value="none">none</option>
+                    <option value="select">eenmalig</option>
+                    <option value="lselect">15 seconden</option>
+                </select></td>
+                <td><select>
+                    <option value="none">none</option>
+                    <option value="select">eenmalig</option>
+                    <option value="lselect">15 seconden</option>
+                </select></td>
+                <td><select>
+                    <option value="none">none</option>
+                    <option value="select">eenmalig</option>
+                    <option value="lselect">15 seconden</option>
+                </select></td>
+                <td><select>
+                    <option value="none">none</option>
+                    <option value="select">eenmalig</option>
+                    <option value="lselect">15 seconden</option>
+                </select></td>
+                <td><select>
+                    <option value="none">none</option>
+                    <option value="select">eenmalig</option>
+                    <option value="lselect">15 seconden</option>
+                </select></td>
+            </tr>
+
+        </tbody>
+    </table>
+
+
+    <script>
+        var baseUrl = 'http://192.168.1.72/api/25ec03261de0a8241f20e172762bc9f/';
+
+        function setAllLightData() {
+            $.getJSON(baseUrl + 'lights',
+                function (data) {
+                    var index,
+                        light,
+                        lightData,
+                        lightsOn = 0,
+                        counterOn = 0;
+
+                    for (light in data) {
+
+
+                        lightData = data[light];
+
+                        if (light === "1") {
+                            index = 3; // counter voor
+                        } else if (light === "2") {
+                            index = 4; // counter achter
+                        } else if (light === "3") {
+                            index = 5; // staand
+                        }
+
+                        if (lightData.state.on) {
+                            lightsOn++;
+
+                            if (index === 3 || index === 4) {
+                                counterOn++;
+                            }
+                        }
+
+                        $('.switch').children().eq(index).children()[0].checked = lightData.state.on;
+                        $('.bri').children().eq(index).children().val(lightData.state.bri);
+                        $('.sat').children().eq(index).children().val(lightData.state.sat);
+                        $('.hue').children().eq(index).children().val(lightData.state.hue);
+                    }
+
+                    $('.switch').children().eq(1).children()[0].checked = (lightsOn === 3);
+                    $('.switch').children().eq(2).children()[0].checked = (counterOn === 2);
+                });
+        }
+
+        setAllLightData();
+
+        $('input, select').on('change', function (e) {
+
+            var input = $(this),
+                value = this.type == 'checkbox' ? this.checked : input.val(),
+                field = input.parent().parent().data('field'),
+                index = input.parent().index(),
+                url = $('thead').find('th').eq(index).data('url');
+
+            if (this.type !== 'range' && this.type !== 'checkbox') {
+                value = '"' + value + '"';
+            }
+
+
+            $.ajax({
+                url: baseUrl + url,
+                method: 'PUT',
+                data: '{"' + field + '": ' + value  + '}'
+            }).complete(function() {
+                setAllLightData();
+            });
+        });
+    </script>
+</body>
+</html>
